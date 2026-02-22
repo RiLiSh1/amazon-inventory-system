@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 商品マスタ
+model Product {
+  id        String   @id @default(cuid())
+  asin      String   @unique
+  sku       String   @unique
+  title     String
+  brand     String?
+  category  String?
+  price     Decimal? @db.Decimal(10, 2)
+  imageUrl  String?  @map("image_url")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  inventories Inventory[]
+
+  @@map("products")
+}
+
+// 在庫データ
+model Inventory {
+  id                String    @id @default(cuid())
+  productId         String    @map("product_id")
+  product           Product   @relation(fields: [productId], references: [id])
+  warehouseLocation String?   @map("warehouse_location")
+  quantity          Int       @default(0)
+  availableQuantity Int       @default(0) @map("available_quantity")
+  reservedQuantity  Int       @default(0) @map("reserved_quantity")
+  reorderPoint      Int       @default(0) @map("reorder_point")
+  reorderQuantity   Int       @default(0) @map("reorder_quantity")
+  lastSyncedAt      DateTime? @map("last_synced_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("inventories")
+}
+
+// Tool4Seller 売上データ
+model T4sSalesData {
+  id            String   @id @default(cuid())
+  date          DateTime @db.Date
+  sellerId      String   @map("seller_id")
+  marketplaceId String   @map("marketplace_id")
+  asin          String
+  sku           String
+  quantity      Int      @default(0)
+  amount        Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([date, sellerId, marketplaceId, asin, sku])
+  @@map("t4s_sales_data")
+}
+
+// Tool4Seller 在庫データ
+model T4sInventoryData {
+  id                String    @id @default(cuid())
+  sellerId          String    @map("seller_id")
+  marketplaceId     String    @map("marketplace_id")
+  asin              String
+  sku               String
+  fnsku             String?
+  type              String?
+  afnFulfillableQty Int       @default(0) @map("afn_fulfillable_qty")
+  afnReservedQty    Int       @default(0) @map("afn_reserved_qty")
+  status            String?
+  updateTime        DateTime? @map("update_time")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@unique([sellerId, marketplaceId, sku])
+  @@map("t4s_inventory_data")
+}
+
+// Tool4Seller 納品プラン
+model T4sInboundShipment {
+  id             String    @id @default(cuid())
+  sellerId       String    @map("seller_id")
+  shipmentId     String    @unique @map("shipment_id")
+  shipmentName   String?   @map("shipment_name")
+  shipmentStatus String?   @map("shipment_status")
+  centerId       String?   @map("center_id")
+  estimatedTime  DateTime? @map("estimated_time")
+  updateTime     DateTime? @map("update_time")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  items T4sInboundShipmentItem[]
+
+  @@map("t4s_inbound_shipments")
+}
+
+// Tool4Seller 納品明細
+model T4sInboundShipmentItem {
+  id          String             @id @default(cuid())
+  shipmentId  String             @map("shipment_id")
+  shipment    T4sInboundShipment @relation(fields: [shipmentId], references: [shipmentId])
+  sku         String
+  networkSku  String?            @map("network_sku")
+  qtyShipped  Int                @default(0) @map("qty_shipped")
+  qtyReceived Int                @default(0) @map("qty_received")
+  qtyInCase   Int                @default(0) @map("qty_in_case")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  @@map("t4s_inbound_shipment_items")
+}
+
+// Tool4Seller API取込ログ
+model T4sImportLog {
+  id           String    @id @default(cuid())
+  endpoint     String
+  status       String
+  recordsCount Int       @default(0) @map("records_count")
+  errorMessage String?   @map("error_message")
+  startedAt    DateTime  @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("t4s_import_logs")
+}
