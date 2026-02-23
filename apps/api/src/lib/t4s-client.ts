@@ -37,10 +37,12 @@ async function t4sFetch<T>(endpoint: string, params: Record<string, string> = {}
   throw lastError;
 }
 
+// T4S API returns arrays directly, with camelCase field names
+
 interface T4sApiSalesItem {
   date: string;
-  seller_id: string;
-  marketplace_id: string;
+  sellerId: string;
+  marketplaceId: string;
   asin: string;
   sku: string;
   quantity: number;
@@ -48,39 +50,34 @@ interface T4sApiSalesItem {
 }
 
 interface T4sApiInventoryItem {
-  seller_id: string;
-  marketplace_id: string;
+  sellerId: string;
+  marketplaceId: string;
   asin: string;
   sku: string;
   fnsku?: string;
   type?: string;
-  afn_fulfillable_qty: number;
-  afn_reserved_qty: number;
-  status?: string;
-  update_time?: string;
+  afnFulfillableQuantity: number;
+  afnReservedQuantity: number;
+  status?: number;
+  updateTime?: number;
 }
 
 interface T4sApiShipment {
-  seller_id: string;
-  shipment_id: string;
-  shipment_name?: string;
-  shipment_status?: string;
-  center_id?: string;
-  estimated_time?: string;
-  update_time?: string;
+  shipmentId: string;
+  shipmentName?: string;
+  shipmentStatus?: string;
+  centerId?: string;
+  estimatedTime?: number;
+  updateTime?: number;
 }
 
 interface T4sApiShipmentItem {
-  shipment_id: string;
+  shipmentId: string;
   sku: string;
-  network_sku?: string;
-  qty_shipped: number;
-  qty_received: number;
-  qty_in_case: number;
-}
-
-interface T4sApiResponse<T> {
-  data: T[];
+  networkSku?: string;
+  qtyShipped: number;
+  qtyReceived: number;
+  qtyInCase: number;
 }
 
 export async function syncSales(startDate: string, endDate: string): Promise<number> {
@@ -91,21 +88,20 @@ export async function syncSales(startDate: string, endDate: string): Promise<num
   try {
     const startTime = Math.floor(new Date(startDate).getTime() / 1000);
     const endTime = Math.floor(new Date(endDate).getTime() / 1000);
-    const result = await t4sFetch<T4sApiResponse<T4sApiSalesItem>>("/api/sales", {
+    const items = await t4sFetch<T4sApiSalesItem[]>("/api/sales", {
       sellerId: config.t4s.sellerId,
       marketplaceId: config.t4s.marketplaceId,
       startTime: String(startTime),
       endTime: String(endTime),
     });
 
-    const items = result.data || [];
     for (const item of items) {
       await prisma.t4sSalesData.upsert({
         where: {
           date_sellerId_marketplaceId_asin_sku: {
             date: new Date(item.date),
-            sellerId: item.seller_id,
-            marketplaceId: item.marketplace_id,
+            sellerId: item.sellerId,
+            marketplaceId: item.marketplaceId,
             asin: item.asin,
             sku: item.sku,
           },
@@ -113,8 +109,8 @@ export async function syncSales(startDate: string, endDate: string): Promise<num
         update: { quantity: item.quantity, amount: item.amount },
         create: {
           date: new Date(item.date),
-          sellerId: item.seller_id,
-          marketplaceId: item.marketplace_id,
+          sellerId: item.sellerId,
+          marketplaceId: item.marketplaceId,
           asin: item.asin,
           sku: item.sku,
           quantity: item.quantity,
@@ -147,18 +143,17 @@ export async function syncInventories(): Promise<number> {
   });
 
   try {
-    const result = await t4sFetch<T4sApiResponse<T4sApiInventoryItem>>("/api/inventories", {
+    const items = await t4sFetch<T4sApiInventoryItem[]>("/api/inventories", {
       sellerId: config.t4s.sellerId,
       marketplaceId: config.t4s.marketplaceId,
     });
 
-    const items = result.data || [];
     for (const item of items) {
       await prisma.t4sInventoryData.upsert({
         where: {
           sellerId_marketplaceId_sku: {
-            sellerId: item.seller_id,
-            marketplaceId: item.marketplace_id,
+            sellerId: item.sellerId,
+            marketplaceId: item.marketplaceId,
             sku: item.sku,
           },
         },
@@ -166,22 +161,22 @@ export async function syncInventories(): Promise<number> {
           asin: item.asin,
           fnsku: item.fnsku || null,
           type: item.type || null,
-          afnFulfillableQty: item.afn_fulfillable_qty,
-          afnReservedQty: item.afn_reserved_qty,
-          status: item.status || null,
-          updateTime: item.update_time ? new Date(item.update_time) : null,
+          afnFulfillableQty: item.afnFulfillableQuantity,
+          afnReservedQty: item.afnReservedQuantity,
+          status: item.status != null ? String(item.status) : null,
+          updateTime: item.updateTime ? new Date(item.updateTime * 1000) : null,
         },
         create: {
-          sellerId: item.seller_id,
-          marketplaceId: item.marketplace_id,
+          sellerId: item.sellerId,
+          marketplaceId: item.marketplaceId,
           asin: item.asin,
           sku: item.sku,
           fnsku: item.fnsku || null,
           type: item.type || null,
-          afnFulfillableQty: item.afn_fulfillable_qty,
-          afnReservedQty: item.afn_reserved_qty,
-          status: item.status || null,
-          updateTime: item.update_time ? new Date(item.update_time) : null,
+          afnFulfillableQty: item.afnFulfillableQuantity,
+          afnReservedQty: item.afnReservedQuantity,
+          status: item.status != null ? String(item.status) : null,
+          updateTime: item.updateTime ? new Date(item.updateTime * 1000) : null,
         },
       });
     }
@@ -210,68 +205,59 @@ export async function syncShipments(): Promise<number> {
   });
 
   try {
-    const result = await t4sFetch<T4sApiResponse<T4sApiShipment>>("/api/inbound-shipments", {
+    const shipments = await t4sFetch<T4sApiShipment[]>("/api/inbound-shipments", {
       sellerId: config.t4s.sellerId,
     });
 
-    const shipments = result.data || [];
     for (const s of shipments) {
       await prisma.t4sInboundShipment.upsert({
-        where: { shipmentId: s.shipment_id },
+        where: { shipmentId: s.shipmentId },
         update: {
-          shipmentName: s.shipment_name || null,
-          shipmentStatus: s.shipment_status || null,
-          centerId: s.center_id || null,
-          estimatedTime: s.estimated_time ? new Date(s.estimated_time) : null,
-          updateTime: s.update_time ? new Date(s.update_time) : null,
+          shipmentName: s.shipmentName || null,
+          shipmentStatus: s.shipmentStatus || null,
+          centerId: s.centerId || null,
+          estimatedTime: s.estimatedTime ? new Date(s.estimatedTime * 1000) : null,
+          updateTime: s.updateTime ? new Date(s.updateTime * 1000) : null,
         },
         create: {
-          sellerId: s.seller_id,
-          shipmentId: s.shipment_id,
-          shipmentName: s.shipment_name || null,
-          shipmentStatus: s.shipment_status || null,
-          centerId: s.center_id || null,
-          estimatedTime: s.estimated_time ? new Date(s.estimated_time) : null,
-          updateTime: s.update_time ? new Date(s.update_time) : null,
+          sellerId: config.t4s.sellerId,
+          shipmentId: s.shipmentId,
+          shipmentName: s.shipmentName || null,
+          shipmentStatus: s.shipmentStatus || null,
+          centerId: s.centerId || null,
+          estimatedTime: s.estimatedTime ? new Date(s.estimatedTime * 1000) : null,
+          updateTime: s.updateTime ? new Date(s.updateTime * 1000) : null,
         },
       });
 
-      // Fetch and sync items for each shipment
-      const itemsResult = await t4sFetch<T4sApiResponse<T4sApiShipmentItem>>(
-        "/api/inbound-shipments/item",
-        { shipmentId: s.shipment_id },
-      );
+      // Fetch items for each shipment (may 404 for some)
+      try {
+        const items = await t4sFetch<T4sApiShipmentItem[]>(
+          "/api/inbound-shipments/item",
+          { shipmentId: s.shipmentId },
+        );
 
-      const items = itemsResult.data || [];
-      await prisma.$transaction(async (tx) => {
-        await tx.t4sInboundShipmentItem.deleteMany({
-          where: { shipmentId: s.shipment_id },
-        });
-        if (items.length > 0) {
-          await tx.t4sInboundShipmentItem.createMany({
-            data: items.map((item) => ({
-              shipmentId: s.shipment_id,
-              sku: item.sku,
-              networkSku: item.network_sku || null,
-              qtyShipped: item.qty_shipped,
-              qtyReceived: item.qty_received,
-              qtyInCase: item.qty_in_case,
-            })),
+        if (Array.isArray(items) && items.length > 0) {
+          await prisma.$transaction(async (tx) => {
+            await tx.t4sInboundShipmentItem.deleteMany({
+              where: { shipmentId: s.shipmentId },
+            });
+            await tx.t4sInboundShipmentItem.createMany({
+              data: items.map((item) => ({
+                shipmentId: s.shipmentId,
+                sku: item.sku,
+                networkSku: item.networkSku || null,
+                qtyShipped: item.qtyShipped,
+                qtyReceived: item.qtyReceived,
+                qtyInCase: item.qtyInCase,
+              })),
+            });
           });
         }
-      });
+      } catch {
+        // Skip items that return 404 or other errors
+      }
     }
-
-    const itemLog = await prisma.t4sImportLog.create({
-      data: {
-        endpoint: "/api/inbound-shipments/item",
-        status: "success",
-        recordsCount: shipments.length,
-        startedAt: new Date(),
-        completedAt: new Date(),
-      },
-    });
-    void itemLog;
 
     await prisma.t4sImportLog.update({
       where: { id: log.id },
