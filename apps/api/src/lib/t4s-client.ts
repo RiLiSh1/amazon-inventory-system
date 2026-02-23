@@ -90,10 +90,10 @@ export async function syncSales(startDate: string, endDate: string): Promise<num
 
   try {
     const result = await t4sFetch<T4sApiResponse<T4sApiSalesItem>>("/api/sales", {
-      seller_id: config.t4s.sellerId,
-      marketplace_id: config.t4s.marketplaceId,
-      start_date: startDate,
-      end_date: endDate,
+      sellerId: config.t4s.sellerId,
+      marketplaceId: config.t4s.marketplaceId,
+      startDate,
+      endDate,
     });
 
     const items = result.data || [];
@@ -146,8 +146,8 @@ export async function syncInventories(): Promise<number> {
 
   try {
     const result = await t4sFetch<T4sApiResponse<T4sApiInventoryItem>>("/api/inventories", {
-      seller_id: config.t4s.sellerId,
-      marketplace_id: config.t4s.marketplaceId,
+      sellerId: config.t4s.sellerId,
+      marketplaceId: config.t4s.marketplaceId,
     });
 
     const items = result.data || [];
@@ -209,7 +209,7 @@ export async function syncShipments(): Promise<number> {
 
   try {
     const result = await t4sFetch<T4sApiResponse<T4sApiShipment>>("/api/inbound-shipments", {
-      seller_id: config.t4s.sellerId,
+      sellerId: config.t4s.sellerId,
     });
 
     const shipments = result.data || [];
@@ -237,7 +237,7 @@ export async function syncShipments(): Promise<number> {
       // Fetch and sync items for each shipment
       const itemsResult = await t4sFetch<T4sApiResponse<T4sApiShipmentItem>>(
         "/api/inbound-shipments/item",
-        { shipment_id: s.shipment_id },
+        { shipmentId: s.shipment_id },
       );
 
       const items = itemsResult.data || [];
