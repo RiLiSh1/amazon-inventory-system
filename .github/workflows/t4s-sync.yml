@@ -1,0 +1,77 @@
+name: T4S Data Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      sync_type:
+        description: "同期タイプ"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - sales
+          - inventories
+          - shipments
+  schedule:
+    # 毎日 AM 6:00 JST (UTC 21:00 前日)
+    - cron: "0 21 * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Sync Sales
+        if: ${{ github.event.inputs.sync_type == 'all' || github.event.inputs.sync_type == 'sales' || github.event_name == 'schedule' }}
+        run: |
+          echo "Syncing sales data..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.VERCEL_APP_URL }}/api/t4s/sync/sales" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Sales sync failed with status $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Sync Inventories
+        if: ${{ github.event.inputs.sync_type == 'all' || github.event.inputs.sync_type == 'inventories' || github.event_name == 'schedule' }}
+        run: |
+          echo "Syncing inventory data..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.VERCEL_APP_URL }}/api/t4s/sync/inventories" \
+            -H "Content-Type: application/json")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Inventory sync failed with status $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Sync Shipments
+        if: ${{ github.event.inputs.sync_type == 'all' || github.event.inputs.sync_type == 'shipments' || github.event_name == 'schedule' }}
+        run: |
+          echo "Syncing shipment data..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.VERCEL_APP_URL }}/api/t4s/sync/shipments" \
+            -H "Content-Type: application/json")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Shipment sync failed with status $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: echo "Sync completed at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
