@@ -89,8 +89,8 @@ export async function syncSales(startDate: string, endDate: string): Promise<num
   });
 
   try {
-    const startTime = new Date(startDate).getTime();
-    const endTime = new Date(endDate).getTime();
+    const startTime = Math.floor(new Date(startDate).getTime() / 1000);
+    const endTime = Math.floor(new Date(endDate).getTime() / 1000);
     const result = await t4sFetch<T4sApiResponse<T4sApiSalesItem>>("/api/sales", {
       sellerId: config.t4s.sellerId,
       marketplaceId: config.t4s.marketplaceId,
