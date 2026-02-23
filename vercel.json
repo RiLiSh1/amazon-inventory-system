@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npx prisma generate --schema=packages/database/prisma/schema.prisma && npm run build --workspace=@amazon-inventory/shared && npm run build --workspace=@amazon-inventory/web",
+  "buildCommand": "cd packages/database && npx prisma generate && cd ../.. && npm run build --workspace=@amazon-inventory/shared && npm run build --workspace=@amazon-inventory/database && npm run build --workspace=@amazon-inventory/web",
   "outputDirectory": "apps/web/.next",
-  "installCommand": "npm install",
+  "installCommand": "npm install --include=dev",
   "framework": "nextjs"
 }
