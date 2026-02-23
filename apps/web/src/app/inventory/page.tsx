@@ -24,8 +24,9 @@ const columns: Column<InventoryItem>[] = [
   {
     key: "title",
     header: "商品名",
+    width: "35%",
     render: (row) => (
-      <span className="block max-w-sm truncate" title={row.product.title}>
+      <span className="block truncate" title={row.product.title}>
         {row.product.title}
       </span>
     ),
@@ -33,6 +34,7 @@ const columns: Column<InventoryItem>[] = [
   {
     key: "sku",
     header: "SKU",
+    width: "15%",
     className: "font-mono text-sm",
     render: (row) => row.product.sku,
   },
@@ -40,24 +42,28 @@ const columns: Column<InventoryItem>[] = [
     key: "quantity",
     header: "総在庫",
     sortable: true,
+    width: "12%",
     className: "text-right",
     render: (row) => formatNumber(row.quantity),
   },
   {
     key: "availableQuantity",
     header: "出荷可能",
+    width: "12%",
     className: "text-right",
     render: (row) => formatNumber(row.availableQuantity),
   },
   {
     key: "reservedQuantity",
     header: "予約済",
+    width: "12%",
     className: "text-right",
     render: (row) => formatNumber(row.reservedQuantity),
   },
   {
     key: "status",
     header: "ステータス",
+    width: "14%",
     render: (row) => {
       const isLow = row.availableQuantity <= row.reorderPoint;
       return (

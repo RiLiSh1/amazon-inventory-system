@@ -9,6 +9,7 @@ export interface Column<T> {
   render?: (row: T) => React.ReactNode;
   sortable?: boolean;
   className?: string;
+  width?: string;
 }
 
 interface DataTableProps<T> {
@@ -67,12 +68,13 @@ export function DataTable<T>({
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-      <table className="min-w-full divide-y divide-gray-200">
+      <table className="min-w-full divide-y divide-gray-200 table-fixed">
         <thead className="bg-gray-50">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
+                style={col.width ? { width: col.width } : undefined}
                 className={cn(
                   "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500",
                   col.sortable && "cursor-pointer select-none hover:text-gray-700",
@@ -102,38 +104,38 @@ export function DataTable<T>({
               const id = keyExtractor(row);
               const isExpanded = expandedRows.has(id);
               return (
-                <tr key={id} className="group">
-                  <td colSpan={columns.length} className="p-0">
-                    <div
-                      className={cn(
-                        "flex",
-                        expandable && "cursor-pointer",
-                        rowClassName?.(row),
-                        "hover:bg-gray-50",
-                      )}
-                      onClick={expandable ? () => toggleExpand(id) : undefined}
-                    >
-                      {columns.map((col) => (
-                        <div
-                          key={col.key}
-                          className={cn(
-                            "flex-1 px-4 py-3 text-sm text-gray-700",
-                            col.className,
-                          )}
-                        >
-                          {col.render
-                            ? col.render(row)
-                            : String((row as Record<string, unknown>)[col.key] ?? "")}
-                        </div>
-                      ))}
-                    </div>
-                    {expandable && isExpanded && renderExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50 px-8 py-4">
-                        {renderExpanded(row)}
-                      </div>
+                <>
+                  <tr
+                    key={id}
+                    className={cn(
+                      "hover:bg-gray-50",
+                      expandable && "cursor-pointer",
+                      rowClassName?.(row),
                     )}
-                  </td>
-                </tr>
+                    onClick={expandable ? () => toggleExpand(id) : undefined}
+                  >
+                    {columns.map((col) => (
+                      <td
+                        key={col.key}
+                        className={cn(
+                          "px-4 py-3 text-sm text-gray-700",
+                          col.className,
+                        )}
+                      >
+                        {col.render
+                          ? col.render(row)
+                          : String((row as Record<string, unknown>)[col.key] ?? "")}
+                      </td>
+                    ))}
+                  </tr>
+                  {expandable && isExpanded && renderExpanded && (
+                    <tr key={`${id}-expanded`}>
+                      <td colSpan={columns.length} className="border-t border-gray-100 bg-gray-50 px-8 py-4">
+                        {renderExpanded(row)}
+                      </td>
+                    </tr>
+                  )}
+                </>
               );
             })
           )}

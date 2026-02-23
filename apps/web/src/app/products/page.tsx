@@ -20,17 +20,19 @@ const columns: Column<ProductRow>[] = [
     key: "title",
     header: "商品名",
     sortable: true,
+    width: "45%",
     render: (row) => (
-      <span className="block max-w-sm truncate" title={row.title}>
+      <span className="block truncate" title={row.title}>
         {row.title}
       </span>
     ),
   },
-  { key: "sku", header: "SKU", sortable: true, className: "font-mono text-sm" },
-  { key: "asin", header: "ASIN", sortable: true, className: "font-mono text-sm" },
+  { key: "sku", header: "SKU", sortable: true, width: "20%", className: "font-mono text-sm" },
+  { key: "asin", header: "ASIN", sortable: true, width: "20%", className: "font-mono text-sm" },
   {
     key: "status",
     header: "ステータス",
+    width: "15%",
     render: (row) => (
       <StatusBadge
         status={row.status}
