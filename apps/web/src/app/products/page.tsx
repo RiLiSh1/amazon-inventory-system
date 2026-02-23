@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { SearchInput } from "@/components/ui/search-input";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { mockProducts } from "@/lib/mock-data";
 import { PRODUCT_STATUS_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
+import { fetchProducts, withFallback } from "@/lib/api-client";
 import type { Product } from "@amazon-inventory/shared";
 
 const columns: Column<Product>[] = [
@@ -46,21 +47,41 @@ const columns: Column<Product>[] = [
 
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
+  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    withFallback<Product[]>(
+      async () => {
+        const raw = await fetchProducts();
+        return raw.map((p) => ({
+          ...p,
+          imageUrl: null,
+          createdAt: new Date(p.createdAt),
+          updatedAt: new Date(p.updatedAt),
+        }));
+      },
+      () => mockProducts,
+    ).then((data) => {
+      setProducts(data);
+      setLoading(false);
+    });
+  }, []);
 
   const filtered = useMemo(() => {
-    if (!search) return mockProducts;
+    if (!search) return products;
     const q = search.toLowerCase();
-    return mockProducts.filter(
+    return products.filter(
       (p) =>
         p.asin.toLowerCase().includes(q) ||
         p.sku.toLowerCase().includes(q) ||
         p.title.toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, products]);
 
   return (
     <>
-      <Header title="商品管理" description={`全${mockProducts.length}件の商品`} />
+      <Header title="商品管理" description={`全${products.length}件の商品`} />
       <div className="p-8 space-y-6">
         <div className="max-w-md">
           <SearchInput
@@ -69,11 +90,17 @@ export default function ProductsPage() {
             placeholder="ASIN、SKU、商品名で検索..."
           />
         </div>
-        <DataTable
-          columns={columns}
-          data={filtered}
-          keyExtractor={(row) => row.id}
-        />
+        {loading ? (
+          <div className="flex items-center justify-center p-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={filtered}
+            keyExtractor={(row) => row.id}
+          />
+        )}
       </div>
     </>
   );

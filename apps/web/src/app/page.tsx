@@ -1,11 +1,61 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { KPICard } from "@/components/ui/kpi-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { SalesLineChart } from "@/components/charts/sales-line-chart";
-import { mockDashboardKPIs, mockDailySales, mockLowStockItems } from "@/lib/mock-data";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { fetchDashboardSummary, withFallback } from "@/lib/api-client";
+import { mockDashboardKPIs, mockDailySales, mockLowStockItems } from "@/lib/mock-data";
+
+interface DashboardData {
+  kpis: { totalProducts: number; totalInventory: number; todaySales: number; lowStockCount: number };
+  chartData: { date: string; amount: number; quantity: number }[];
+  lowStockItems: Array<{
+    id: string;
+    quantity: number;
+    availableQuantity: number;
+    reorderPoint: number;
+    product: { sku: string; title: string };
+  }>;
+}
 
 export default function DashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    withFallback(
+      () => fetchDashboardSummary(),
+      () => ({
+        kpis: mockDashboardKPIs,
+        chartData: mockDailySales,
+        lowStockItems: mockLowStockItems.map((i) => ({
+          id: i.id,
+          quantity: i.quantity,
+          availableQuantity: i.availableQuantity,
+          reorderPoint: i.reorderPoint,
+          product: { sku: i.product.sku, title: i.product.title },
+        })),
+      }),
+    ).then((d) => {
+      setData(d);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading || !data) {
+    return (
+      <>
+        <Header title="ダッシュボード" description="在庫状況と売上の概要" />
+        <div className="flex items-center justify-center p-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Header title="ダッシュボード" description="在庫状況と売上の概要" />
@@ -14,7 +64,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           <KPICard
             title="有効商品数"
-            value={mockDashboardKPIs.totalProducts}
+            value={data.kpis.totalProducts}
             subtitle="アクティブな商品"
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -24,7 +74,7 @@ export default function DashboardPage() {
           />
           <KPICard
             title="総在庫数"
-            value={formatNumber(mockDashboardKPIs.totalInventory)}
+            value={formatNumber(data.kpis.totalInventory)}
             subtitle="全倉庫合計"
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -34,7 +84,7 @@ export default function DashboardPage() {
           />
           <KPICard
             title="本日の売上"
-            value={formatCurrency(mockDashboardKPIs.todaySales)}
+            value={formatCurrency(data.kpis.todaySales)}
             subtitle="前日比で推移中"
             trend="up"
             icon={
@@ -45,7 +95,7 @@ export default function DashboardPage() {
           />
           <KPICard
             title="在庫不足"
-            value={`${mockDashboardKPIs.lowStockCount}件`}
+            value={`${data.kpis.lowStockCount}件`}
             subtitle="発注点以下の商品"
             trend="down"
             icon={
@@ -59,13 +109,13 @@ export default function DashboardPage() {
         {/* Sales Chart */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">売上推移（過去30日間）</h2>
-          <SalesLineChart data={mockDailySales} />
+          <SalesLineChart data={data.chartData} />
         </div>
 
         {/* Low Stock Table */}
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">在庫不足アイテム</h2>
-          {mockLowStockItems.length === 0 ? (
+          {data.lowStockItems.length === 0 ? (
             <p className="text-sm text-gray-500">在庫不足の商品はありません。</p>
           ) : (
             <div className="overflow-x-auto">
@@ -81,7 +131,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {mockLowStockItems.map((item) => (
+                  {data.lowStockItems.map((item) => (
                     <tr key={item.id} className="bg-red-50">
                       <td className="px-4 py-3 text-sm font-mono text-gray-700">{item.product.sku}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{item.product.title}</td>

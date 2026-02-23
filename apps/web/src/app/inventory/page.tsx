@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { mockInventory, type InventoryWithProduct } from "@/lib/mock-data";
 import { STOCK_STATUS_OPTIONS } from "@/lib/constants";
 import { formatNumber } from "@/lib/utils";
+import { fetchInventories, withFallback } from "@/lib/api-client";
 
 const columns: Column<InventoryWithProduct>[] = [
   {
@@ -67,20 +68,32 @@ const columns: Column<InventoryWithProduct>[] = [
 
 export default function InventoryPage() {
   const [filter, setFilter] = useState("all");
+  const [inventories, setInventories] = useState<InventoryWithProduct[]>(mockInventory);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    withFallback(
+      () => fetchInventories(),
+      () => mockInventory,
+    ).then((data) => {
+      setInventories(data as InventoryWithProduct[]);
+      setLoading(false);
+    });
+  }, []);
 
   const filtered = useMemo(() => {
-    if (filter === "low") return mockInventory.filter((i) => i.quantity <= i.reorderPoint);
-    if (filter === "normal") return mockInventory.filter((i) => i.quantity > i.reorderPoint);
-    return mockInventory;
-  }, [filter]);
+    if (filter === "low") return inventories.filter((i) => i.quantity <= i.reorderPoint);
+    if (filter === "normal") return inventories.filter((i) => i.quantity > i.reorderPoint);
+    return inventories;
+  }, [filter, inventories]);
 
-  const lowCount = mockInventory.filter((i) => i.quantity <= i.reorderPoint).length;
+  const lowCount = inventories.filter((i) => i.quantity <= i.reorderPoint).length;
 
   return (
     <>
       <Header
         title="在庫管理"
-        description={`全${mockInventory.length}件 / 在庫不足: ${lowCount}件`}
+        description={`全${inventories.length}件 / 在庫不足: ${lowCount}件`}
       />
       <div className="p-8 space-y-6">
         <FilterSelect
@@ -89,14 +102,20 @@ export default function InventoryPage() {
           options={STOCK_STATUS_OPTIONS}
           onChange={setFilter}
         />
-        <DataTable
-          columns={columns}
-          data={filtered}
-          keyExtractor={(row) => row.id}
-          rowClassName={(row) =>
-            row.quantity <= row.reorderPoint ? "bg-red-50" : undefined
-          }
-        />
+        {loading ? (
+          <div className="flex items-center justify-center p-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={filtered}
+            keyExtractor={(row) => row.id}
+            rowClassName={(row) =>
+              row.quantity <= row.reorderPoint ? "bg-red-50" : undefined
+            }
+          />
+        )}
       </div>
     </>
   );
