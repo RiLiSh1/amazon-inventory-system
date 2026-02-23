@@ -5,40 +5,36 @@ import { Header } from "@/components/layout/header";
 import { SearchInput } from "@/components/ui/search-input";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { PRODUCT_STATUS_LABELS } from "@/lib/constants";
-import { formatCurrency } from "@/lib/utils";
 import { fetchProducts } from "@/lib/api-client";
-import type { Product } from "@amazon-inventory/shared";
 
-const columns: Column<Product>[] = [
-  { key: "asin", header: "ASIN", sortable: true, className: "font-mono" },
-  { key: "sku", header: "SKU", sortable: true, className: "font-mono" },
+interface ProductRow {
+  id: string;
+  asin: string;
+  sku: string;
+  title: string;
+  status: string;
+}
+
+const columns: Column<ProductRow>[] = [
   {
     key: "title",
     header: "商品名",
     sortable: true,
     render: (row) => (
-      <span className="block max-w-xs truncate" title={row.title}>
+      <span className="block max-w-sm truncate" title={row.title}>
         {row.title}
       </span>
     ),
   },
-  { key: "brand", header: "ブランド", sortable: true },
-  { key: "category", header: "カテゴリー", sortable: true },
-  {
-    key: "price",
-    header: "価格",
-    sortable: true,
-    className: "text-right",
-    render: (row) => (row.price != null ? formatCurrency(row.price) : "---"),
-  },
+  { key: "sku", header: "SKU", sortable: true, className: "font-mono text-sm" },
+  { key: "asin", header: "ASIN", sortable: true, className: "font-mono text-sm" },
   {
     key: "status",
     header: "ステータス",
     render: (row) => (
       <StatusBadge
         status={row.status}
-        label={PRODUCT_STATUS_LABELS[row.status] || row.status}
+        label={row.status === "active" ? "販売中" : "停止中"}
       />
     ),
   },
@@ -46,22 +42,19 @@ const columns: Column<Product>[] = [
 
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProducts()
-      .then((raw) => {
-        setProducts(
-          raw.map((p) => ({
-            ...p,
-            imageUrl: null,
-            createdAt: new Date(p.createdAt),
-            updatedAt: new Date(p.updatedAt),
-          })),
-        );
-      })
+      .then((raw) => setProducts(raw.map((p) => ({
+        id: p.id,
+        asin: p.asin,
+        sku: p.sku,
+        title: p.title,
+        status: p.status,
+      }))))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);

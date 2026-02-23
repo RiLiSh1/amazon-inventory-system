@@ -22,50 +22,44 @@ interface InventoryItem {
 
 const columns: Column<InventoryItem>[] = [
   {
-    key: "sku",
-    header: "SKU",
-    className: "font-mono",
-    render: (row) => row.product.sku,
-  },
-  {
     key: "title",
     header: "商品名",
     render: (row) => (
-      <span className="block max-w-xs truncate" title={row.product.title}>
+      <span className="block max-w-sm truncate" title={row.product.title}>
         {row.product.title}
       </span>
     ),
   },
   {
+    key: "sku",
+    header: "SKU",
+    className: "font-mono text-sm",
+    render: (row) => row.product.sku,
+  },
+  {
     key: "quantity",
-    header: "在庫数",
+    header: "総在庫",
     sortable: true,
     className: "text-right",
     render: (row) => formatNumber(row.quantity),
   },
   {
     key: "availableQuantity",
-    header: "利用可能",
+    header: "出荷可能",
     className: "text-right",
     render: (row) => formatNumber(row.availableQuantity),
   },
   {
     key: "reservedQuantity",
-    header: "予約済み",
+    header: "予約済",
     className: "text-right",
     render: (row) => formatNumber(row.reservedQuantity),
-  },
-  {
-    key: "reorderPoint",
-    header: "発注点",
-    className: "text-right",
-    render: (row) => formatNumber(row.reorderPoint),
   },
   {
     key: "status",
     header: "ステータス",
     render: (row) => {
-      const isLow = row.quantity <= row.reorderPoint;
+      const isLow = row.availableQuantity <= row.reorderPoint;
       return (
         <StatusBadge
           status={isLow ? "low" : "normal"}
@@ -90,12 +84,12 @@ export default function InventoryPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    if (filter === "low") return inventories.filter((i) => i.quantity <= i.reorderPoint);
-    if (filter === "normal") return inventories.filter((i) => i.quantity > i.reorderPoint);
+    if (filter === "low") return inventories.filter((i) => i.availableQuantity <= i.reorderPoint);
+    if (filter === "normal") return inventories.filter((i) => i.availableQuantity > i.reorderPoint);
     return inventories;
   }, [filter, inventories]);
 
-  const lowCount = inventories.filter((i) => i.quantity <= i.reorderPoint).length;
+  const lowCount = inventories.filter((i) => i.availableQuantity <= i.reorderPoint).length;
 
   return (
     <>
@@ -122,7 +116,7 @@ export default function InventoryPage() {
             data={filtered}
             keyExtractor={(row) => row.id}
             rowClassName={(row) =>
-              row.quantity <= row.reorderPoint ? "bg-red-50" : undefined
+              row.availableQuantity <= row.reorderPoint ? "bg-red-50" : undefined
             }
           />
         )}

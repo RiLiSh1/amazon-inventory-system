@@ -5,9 +5,8 @@ import { Header } from "@/components/layout/header";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { SalesBarChart } from "@/components/charts/sales-bar-chart";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 import { fetchSalesData, fetchDailySales } from "@/lib/api-client";
-import type { T4sSalesData } from "@amazon-inventory/shared";
 
 function daysAgo(n: number): string {
   const d = new Date();
@@ -15,21 +14,30 @@ function daysAgo(n: number): string {
   return d.toISOString().split("T")[0];
 }
 
-const columns: Column<T4sSalesData>[] = [
+interface SalesRow {
+  id: string;
+  date: Date;
+  asin: string;
+  sku: string;
+  quantity: number;
+  amount: number;
+}
+
+const columns: Column<SalesRow>[] = [
   {
     key: "date",
     header: "日付",
     sortable: true,
     render: (row) => formatDate(row.date),
   },
-  { key: "asin", header: "ASIN", className: "font-mono" },
-  { key: "sku", header: "SKU", className: "font-mono" },
+  { key: "sku", header: "SKU", className: "font-mono text-sm" },
+  { key: "asin", header: "ASIN", className: "font-mono text-sm" },
   {
     key: "quantity",
     header: "数量",
     sortable: true,
     className: "text-right",
-    render: (row) => String(row.quantity),
+    render: (row) => formatNumber(row.quantity),
   },
   {
     key: "amount",
@@ -43,7 +51,7 @@ const columns: Column<T4sSalesData>[] = [
 export default function SalesPage() {
   const [startDate, setStartDate] = useState(daysAgo(6));
   const [endDate, setEndDate] = useState(daysAgo(0));
-  const [salesData, setSalesData] = useState<T4sSalesData[]>([]);
+  const [salesData, setSalesData] = useState<SalesRow[]>([]);
   const [dailyData, setDailyData] = useState<{ date: string; amount: number; quantity: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,12 +62,12 @@ export default function SalesPage() {
 
     const loadSales = fetchSalesData(startDate, endDate).then((raw) =>
       raw.map((s) => ({
-        ...s,
+        id: s.id,
         date: new Date(s.date),
-        sellerId: "",
-        marketplaceId: "",
-        createdAt: new Date(s.date),
-        updatedAt: new Date(s.date),
+        asin: s.asin,
+        sku: s.sku,
+        quantity: s.quantity,
+        amount: s.amount,
       })),
     );
 
@@ -78,12 +86,16 @@ export default function SalesPage() {
     () => salesData.reduce((sum, s) => sum + s.amount, 0),
     [salesData],
   );
+  const totalQty = useMemo(
+    () => salesData.reduce((sum, s) => sum + s.quantity, 0),
+    [salesData],
+  );
 
   return (
     <>
       <Header
         title="売上データ"
-        description={`合計: ${formatCurrency(totalAmount)}`}
+        description={`合計: ${formatCurrency(totalAmount)} / ${formatNumber(totalQty)}個`}
       />
       <div className="p-8 space-y-8">
         <DateRangePicker
