@@ -7,7 +7,7 @@ export async function GET() {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
 
-    const [t4sInventories, todaySalesAgg, dailySales] = await Promise.all([
+    const [t4sInventories, todaySalesAgg, dailySales, productRecords] = await Promise.all([
       prisma.t4sInventoryData.findMany(),
       prisma.t4sSalesData.aggregate({
         where: { date: { gte: todayStart } },
@@ -17,7 +17,13 @@ export async function GET() {
         where: { date: { gte: thirtyDaysAgo } },
         orderBy: { date: "asc" },
       }),
+      prisma.product.findMany(),
     ]);
+
+    const titleMap = new Map<string, string>();
+    for (const p of productRecords) {
+      titleMap.set(p.asin, p.title);
+    }
 
     const totalProducts = t4sInventories.length;
     const totalInventory = t4sInventories.reduce((sum, i) => sum + i.afnFulfillableQty + i.afnReservedQty, 0);
@@ -31,7 +37,7 @@ export async function GET() {
         quantity: i.afnFulfillableQty + i.afnReservedQty,
         availableQuantity: i.afnFulfillableQty,
         reorderPoint: 10,
-        product: { sku: i.sku, title: i.asin },
+        product: { sku: i.sku, title: titleMap.get(i.asin) || i.asin },
       }));
 
     const dailyMap = new Map<string, { amount: number; quantity: number }>();

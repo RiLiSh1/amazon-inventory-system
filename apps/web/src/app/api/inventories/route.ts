@@ -8,7 +8,16 @@ export async function GET(request: NextRequest) {
     const pageNum = Math.max(1, Number(searchParams.get("page") || "1"));
     const perPageNum = Math.min(200, Math.max(1, Number(searchParams.get("perPage") || "20")));
 
-    const t4sItems = await prisma.t4sInventoryData.findMany();
+    const [t4sItems, productRecords] = await Promise.all([
+      prisma.t4sInventoryData.findMany(),
+      prisma.product.findMany(),
+    ]);
+
+    // Build title lookup by ASIN
+    const titleMap = new Map<string, string>();
+    for (const p of productRecords) {
+      titleMap.set(p.asin, p.title);
+    }
 
     const REORDER_POINT = 10;
 
@@ -22,7 +31,7 @@ export async function GET(request: NextRequest) {
       reorderQuantity: 50,
       product: {
         sku: item.sku,
-        title: item.asin,
+        title: titleMap.get(item.asin) || item.asin,
         price: null,
       },
     }));

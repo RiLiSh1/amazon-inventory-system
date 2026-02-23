@@ -8,48 +8,45 @@ export async function GET(request: NextRequest) {
     const pageNum = Math.max(1, Number(searchParams.get("page") || "1"));
     const perPageNum = Math.min(200, Math.max(1, Number(searchParams.get("perPage") || "20")));
 
-    // Build products from T4S inventory data (unique by ASIN+SKU)
-    const t4sItems = await prisma.t4sInventoryData.findMany();
+    // Get T4S inventory items and product titles
+    const [t4sItems, productRecords] = await Promise.all([
+      prisma.t4sInventoryData.findMany(),
+      prisma.product.findMany(),
+    ]);
 
-    const productMap = new Map<string, {
-      id: string;
-      asin: string;
-      sku: string;
-      title: string;
-      brand: string | null;
-      category: string | null;
-      price: number | null;
-      status: string;
-      createdAt: string;
-      updatedAt: string;
-    }>();
-
-    for (const item of t4sItems) {
-      const key = `${item.asin}_${item.sku}`;
-      if (!productMap.has(key)) {
-        productMap.set(key, {
-          id: item.id,
-          asin: item.asin,
-          sku: item.sku,
-          title: item.asin, // ASIN as placeholder title
-          brand: null,
-          category: item.type || null,
-          price: null,
-          status: item.afnFulfillableQty > 0 ? "active" : "inactive",
-          createdAt: item.createdAt.toISOString(),
-          updatedAt: (item.updateTime || item.createdAt).toISOString(),
-        });
-      }
+    // Build title lookup by ASIN
+    const titleMap = new Map<string, { title: string; brand: string | null; price: number | null }>();
+    for (const p of productRecords) {
+      titleMap.set(p.asin, {
+        title: p.title,
+        brand: p.brand,
+        price: p.price ? Number(p.price) : null,
+      });
     }
 
-    let products = Array.from(productMap.values());
+    let products = t4sItems.map((item) => {
+      const info = titleMap.get(item.asin);
+      return {
+        id: item.id,
+        asin: item.asin,
+        sku: item.sku,
+        title: info?.title || item.asin,
+        brand: info?.brand || null,
+        category: item.type || null,
+        price: info?.price || null,
+        status: item.afnFulfillableQty > 0 ? "active" : "inactive",
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: (item.updateTime || item.createdAt).toISOString(),
+      };
+    });
 
     if (search) {
       const q = search.toLowerCase();
       products = products.filter(
         (p) =>
           p.asin.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q),
+          p.sku.toLowerCase().includes(q) ||
+          p.title.toLowerCase().includes(q),
       );
     }
 
