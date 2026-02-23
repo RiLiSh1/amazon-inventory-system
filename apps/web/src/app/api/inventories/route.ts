@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     const inventories = t4sItems.map((item) => ({
       id: item.id,
       productId: item.id,
+      asin: item.asin,
       quantity: item.afnFulfillableQty + item.afnReservedQty,
       availableQuantity: item.afnFulfillableQty,
       reservedQuantity: item.afnReservedQty,

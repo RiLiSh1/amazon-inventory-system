@@ -61,6 +61,7 @@ export async function fetchInventories(stockStatus?: string) {
   const res = await apiFetch<ApiListResponse<{
     id: string;
     productId: string;
+    asin: string;
     quantity: number;
     availableQuantity: number;
     reservedQuantity: number;

@@ -12,6 +12,7 @@ import { fetchInventories } from "@/lib/api-client";
 interface InventoryItem {
   id: string;
   productId: string;
+  asin: string;
   quantity: number;
   availableQuantity: number;
   reservedQuantity: number;
@@ -24,7 +25,7 @@ const columns: Column<InventoryItem>[] = [
   {
     key: "title",
     header: "商品名",
-    width: "35%",
+    width: "28%",
     render: (row) => (
       <span className="block truncate" title={row.product.title}>
         {row.product.title}
@@ -34,9 +35,15 @@ const columns: Column<InventoryItem>[] = [
   {
     key: "sku",
     header: "SKU",
-    width: "15%",
+    width: "14%",
     className: "font-mono text-sm",
     render: (row) => row.product.sku,
+  },
+  {
+    key: "asin",
+    header: "ASIN",
+    width: "12%",
+    className: "font-mono text-sm",
   },
   {
     key: "quantity",
@@ -63,7 +70,7 @@ const columns: Column<InventoryItem>[] = [
   {
     key: "status",
     header: "ステータス",
-    width: "14%",
+    width: "10%",
     render: (row) => {
       const isLow = row.availableQuantity <= row.reorderPoint;
       return (
