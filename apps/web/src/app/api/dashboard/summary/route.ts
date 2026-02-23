@@ -7,7 +7,7 @@ export async function GET() {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
 
-    const [t4sInventories, todaySalesAgg, dailySales, shipmentCount] = await Promise.all([
+    const [t4sInventories, todaySalesAgg, dailySales] = await Promise.all([
       prisma.t4sInventoryData.findMany(),
       prisma.t4sSalesData.aggregate({
         where: { date: { gte: todayStart } },
@@ -17,7 +17,6 @@ export async function GET() {
         where: { date: { gte: thirtyDaysAgo } },
         orderBy: { date: "asc" },
       }),
-      prisma.t4sInboundShipment.count(),
     ]);
 
     const totalProducts = t4sInventories.length;
