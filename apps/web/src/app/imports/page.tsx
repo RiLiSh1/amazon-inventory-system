@@ -3,36 +3,33 @@
 import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { mockImportLogs } from "@/lib/mock-data";
 import { IMPORT_STATUS_LABELS } from "@/lib/constants";
 import { formatDateTime, formatNumber } from "@/lib/utils";
-import { fetchImportLogs, withFallback } from "@/lib/api-client";
+import { fetchImportLogs } from "@/lib/api-client";
 import type { T4sImportLog } from "@amazon-inventory/shared";
 
 export default function ImportsPage() {
   const [logs, setLogs] = useState<T4sImportLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    withFallback<T4sImportLog[]>(
-      async () => {
-        const raw = await fetchImportLogs();
-        return raw.map((l) => ({
+    fetchImportLogs()
+      .then((raw) => {
+        const mapped = raw.map((l) => ({
           ...l,
           status: l.status as T4sImportLog["status"],
           startedAt: new Date(l.startedAt),
           completedAt: l.completedAt ? new Date(l.completedAt) : null,
           createdAt: new Date(l.startedAt),
         }));
-      },
-      () => mockImportLogs,
-    ).then((data) => {
-      const sorted = [...data].sort(
-        (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-      );
-      setLogs(sorted);
-      setLoading(false);
-    });
+        const sorted = mapped.sort(
+          (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+        );
+        setLogs(sorted);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -46,6 +43,8 @@ export default function ImportsPage() {
           <div className="flex items-center justify-center p-16">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
           </div>
+        ) : error ? (
+          <p className="text-red-600">データの取得に失敗しました: {error}</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
             <table className="min-w-full divide-y divide-gray-200">

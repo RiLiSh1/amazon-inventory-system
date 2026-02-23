@@ -6,8 +6,7 @@ import { KPICard } from "@/components/ui/kpi-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { SalesLineChart } from "@/components/charts/sales-line-chart";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import { fetchDashboardSummary, withFallback } from "@/lib/api-client";
-import { mockDashboardKPIs, mockDailySales, mockLowStockItems } from "@/lib/mock-data";
+import { fetchDashboardSummary } from "@/lib/api-client";
 
 interface DashboardData {
   kpis: { totalProducts: number; totalInventory: number; todaySales: number; lowStockCount: number };
@@ -24,33 +23,32 @@ interface DashboardData {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    withFallback(
-      () => fetchDashboardSummary(),
-      () => ({
-        kpis: mockDashboardKPIs,
-        chartData: mockDailySales,
-        lowStockItems: mockLowStockItems.map((i) => ({
-          id: i.id,
-          quantity: i.quantity,
-          availableQuantity: i.availableQuantity,
-          reorderPoint: i.reorderPoint,
-          product: { sku: i.product.sku, title: i.product.title },
-        })),
-      }),
-    ).then((d) => {
-      setData(d);
-      setLoading(false);
-    });
+    fetchDashboardSummary()
+      .then((d) => setData(d))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <>
         <Header title="ダッシュボード" description="在庫状況と売上の概要" />
         <div className="flex items-center justify-center p-16">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        </div>
+      </>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <>
+        <Header title="ダッシュボード" description="在庫状況と売上の概要" />
+        <div className="p-8">
+          <p className="text-red-600">データの取得に失敗しました: {error}</p>
         </div>
       </>
     );

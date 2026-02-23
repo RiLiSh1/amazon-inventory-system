@@ -5,9 +5,8 @@ import { Header } from "@/components/layout/header";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { SalesBarChart } from "@/components/charts/sales-bar-chart";
-import { mockSalesData, mockDailySales } from "@/lib/mock-data";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { fetchSalesData, fetchDailySales, withFallback } from "@/lib/api-client";
+import { fetchSalesData, fetchDailySales } from "@/lib/api-client";
 import type { T4sSalesData } from "@amazon-inventory/shared";
 
 function daysAgo(n: number): string {
@@ -42,51 +41,37 @@ const columns: Column<T4sSalesData>[] = [
 ];
 
 export default function SalesPage() {
-  const [startDate, setStartDate] = useState(daysAgo(29));
+  const [startDate, setStartDate] = useState(daysAgo(6));
   const [endDate, setEndDate] = useState(daysAgo(0));
   const [salesData, setSalesData] = useState<T4sSalesData[]>([]);
   const [dailyData, setDailyData] = useState<{ date: string; amount: number; quantity: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
 
-    const loadSales = withFallback<T4sSalesData[]>(
-      async () => {
-        const raw = await fetchSalesData(startDate, endDate);
-        return raw.map((s) => ({
-          ...s,
-          date: new Date(s.date),
-          sellerId: "",
-          marketplaceId: "",
-          createdAt: new Date(s.date),
-          updatedAt: new Date(s.date),
-        }));
-      },
-      () => {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        return mockSalesData
-          .filter((s) => {
-            const d = new Date(s.date);
-            return d >= start && d <= end;
-          })
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      },
+    const loadSales = fetchSalesData(startDate, endDate).then((raw) =>
+      raw.map((s) => ({
+        ...s,
+        date: new Date(s.date),
+        sellerId: "",
+        marketplaceId: "",
+        createdAt: new Date(s.date),
+        updatedAt: new Date(s.date),
+      })),
     );
 
-    const loadDaily = withFallback<{ date: string; amount: number; quantity: number }[]>(
-      () => fetchDailySales(startDate, endDate),
-      () => mockDailySales.filter((d) => d.date >= startDate && d.date <= endDate),
-    );
+    const loadDaily = fetchDailySales(startDate, endDate);
 
-    Promise.all([loadSales, loadDaily]).then(([sales, daily]) => {
-      setSalesData(sales);
-      setDailyData(daily);
-      setLoading(false);
-    });
+    Promise.all([loadSales, loadDaily])
+      .then(([sales, daily]) => {
+        setSalesData(sales);
+        setDailyData(daily);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, [startDate, endDate]);
 
   const totalAmount = useMemo(
@@ -114,6 +99,8 @@ export default function SalesPage() {
           <div className="flex items-center justify-center p-16">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
           </div>
+        ) : error ? (
+          <p className="text-red-600">データの取得に失敗しました: {error}</p>
         ) : (
           <>
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

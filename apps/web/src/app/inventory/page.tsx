@@ -5,12 +5,22 @@ import { Header } from "@/components/layout/header";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { mockInventory, type InventoryWithProduct } from "@/lib/mock-data";
 import { STOCK_STATUS_OPTIONS } from "@/lib/constants";
 import { formatNumber } from "@/lib/utils";
-import { fetchInventories, withFallback } from "@/lib/api-client";
+import { fetchInventories } from "@/lib/api-client";
 
-const columns: Column<InventoryWithProduct>[] = [
+interface InventoryItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  availableQuantity: number;
+  reservedQuantity: number;
+  reorderPoint: number;
+  reorderQuantity: number;
+  product: { sku: string; title: string; price: number | null };
+}
+
+const columns: Column<InventoryItem>[] = [
   {
     key: "sku",
     header: "SKU",
@@ -68,17 +78,15 @@ const columns: Column<InventoryWithProduct>[] = [
 
 export default function InventoryPage() {
   const [filter, setFilter] = useState("all");
-  const [inventories, setInventories] = useState<InventoryWithProduct[]>(mockInventory);
+  const [inventories, setInventories] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    withFallback(
-      () => fetchInventories(),
-      () => mockInventory,
-    ).then((data) => {
-      setInventories(data as InventoryWithProduct[]);
-      setLoading(false);
-    });
+    fetchInventories()
+      .then((data) => setInventories(data))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = useMemo(() => {
@@ -106,6 +114,8 @@ export default function InventoryPage() {
           <div className="flex items-center justify-center p-16">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
           </div>
+        ) : error ? (
+          <p className="text-red-600">データの取得に失敗しました: {error}</p>
         ) : (
           <DataTable
             columns={columns}

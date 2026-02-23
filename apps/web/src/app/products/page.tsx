@@ -5,10 +5,9 @@ import { Header } from "@/components/layout/header";
 import { SearchInput } from "@/components/ui/search-input";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { mockProducts } from "@/lib/mock-data";
 import { PRODUCT_STATUS_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
-import { fetchProducts, withFallback } from "@/lib/api-client";
+import { fetchProducts } from "@/lib/api-client";
 import type { Product } from "@amazon-inventory/shared";
 
 const columns: Column<Product>[] = [
@@ -47,25 +46,24 @@ const columns: Column<Product>[] = [
 
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    withFallback<Product[]>(
-      async () => {
-        const raw = await fetchProducts();
-        return raw.map((p) => ({
-          ...p,
-          imageUrl: null,
-          createdAt: new Date(p.createdAt),
-          updatedAt: new Date(p.updatedAt),
-        }));
-      },
-      () => mockProducts,
-    ).then((data) => {
-      setProducts(data);
-      setLoading(false);
-    });
+    fetchProducts()
+      .then((raw) => {
+        setProducts(
+          raw.map((p) => ({
+            ...p,
+            imageUrl: null,
+            createdAt: new Date(p.createdAt),
+            updatedAt: new Date(p.updatedAt),
+          })),
+        );
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = useMemo(() => {
@@ -94,6 +92,8 @@ export default function ProductsPage() {
           <div className="flex items-center justify-center p-16">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
           </div>
+        ) : error ? (
+          <p className="text-red-600">データの取得に失敗しました: {error}</p>
         ) : (
           <DataTable
             columns={columns}

@@ -11,17 +11,6 @@ async function apiFetch<T>(path: string): Promise<T> {
   return json as T;
 }
 
-export async function withFallback<T>(
-  fetcher: () => Promise<T>,
-  fallback: () => T | Promise<T>,
-): Promise<T> {
-  try {
-    return await fetcher();
-  } catch {
-    return await fallback();
-  }
-}
-
 interface ApiListResponse<T> {
   success: boolean;
   data: T[];

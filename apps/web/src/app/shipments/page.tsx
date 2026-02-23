@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { mockShipments, mockShipmentItems } from "@/lib/mock-data";
 import { SHIPMENT_STATUS_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/utils";
-import { fetchShipments, fetchShipmentItems, withFallback } from "@/lib/api-client";
+import { fetchShipments, fetchShipmentItems } from "@/lib/api-client";
 import type { T4sInboundShipment, T4sInboundShipmentItem } from "@amazon-inventory/shared";
 
 const columns: Column<T4sInboundShipment>[] = [
@@ -53,20 +52,18 @@ function ShipmentItemsTable({ shipmentId }: { shipmentId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    withFallback<T4sInboundShipmentItem[]>(
-      async () => {
-        const raw = await fetchShipmentItems(shipmentId);
-        return raw.map((i) => ({
-          ...i,
-          createdAt: new Date(i.id), // placeholder
-          updatedAt: new Date(i.id),
-        })) as T4sInboundShipmentItem[];
-      },
-      () => mockShipmentItems.filter((i) => i.shipmentId === shipmentId),
-    ).then((data) => {
-      setItems(data);
-      setLoading(false);
-    });
+    fetchShipmentItems(shipmentId)
+      .then((raw) => {
+        setItems(
+          raw.map((i) => ({
+            ...i,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })) as T4sInboundShipmentItem[],
+        );
+      })
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
   }, [shipmentId]);
 
   if (loading) {
@@ -102,27 +99,26 @@ function ShipmentItemsTable({ shipmentId }: { shipmentId: string }) {
 }
 
 export default function ShipmentsPage() {
-  const [shipments, setShipments] = useState<T4sInboundShipment[]>(mockShipments);
+  const [shipments, setShipments] = useState<T4sInboundShipment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    withFallback<T4sInboundShipment[]>(
-      async () => {
-        const raw = await fetchShipments();
-        return raw.map((s) => ({
-          ...s,
-          sellerId: "",
-          estimatedTime: s.estimatedTime ? new Date(s.estimatedTime) : null,
-          updateTime: s.updateTime ? new Date(s.updateTime) : null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }));
-      },
-      () => mockShipments,
-    ).then((data) => {
-      setShipments(data);
-      setLoading(false);
-    });
+    fetchShipments()
+      .then((raw) => {
+        setShipments(
+          raw.map((s) => ({
+            ...s,
+            sellerId: "",
+            estimatedTime: s.estimatedTime ? new Date(s.estimatedTime) : null,
+            updateTime: s.updateTime ? new Date(s.updateTime) : null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })),
+        );
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -136,6 +132,8 @@ export default function ShipmentsPage() {
           <div className="flex items-center justify-center p-16">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
           </div>
+        ) : error ? (
+          <p className="text-red-600">データの取得に失敗しました: {error}</p>
         ) : (
           <DataTable
             columns={columns}
