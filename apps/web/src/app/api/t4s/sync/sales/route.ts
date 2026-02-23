@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const now = new Date();
-    const startDate = body.startDate || new Date(now.getTime() - 30 * 86400000).toISOString().split("T")[0];
+    const startDate = body.startDate || new Date(now.getTime() - 7 * 86400000).toISOString().split("T")[0];
     const endDate = body.endDate || now.toISOString().split("T")[0];
 
     const count = await syncSales(startDate, endDate);
