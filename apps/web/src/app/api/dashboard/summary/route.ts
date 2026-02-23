@@ -7,9 +7,8 @@ export async function GET() {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
 
-    const [totalProducts, inventories, todaySalesAgg, dailySales] = await Promise.all([
-      prisma.product.count({ where: { status: "active" } }),
-      prisma.inventory.findMany({ include: { product: true } }),
+    const [t4sInventories, todaySalesAgg, dailySales, shipmentCount] = await Promise.all([
+      prisma.t4sInventoryData.findMany(),
       prisma.t4sSalesData.aggregate({
         where: { date: { gte: todayStart } },
         _sum: { amount: true },
@@ -18,11 +17,23 @@ export async function GET() {
         where: { date: { gte: thirtyDaysAgo } },
         orderBy: { date: "asc" },
       }),
+      prisma.t4sInboundShipment.count(),
     ]);
 
-    const totalInventory = inventories.reduce((sum, i) => sum + i.quantity, 0);
-    const lowStockItems = inventories.filter((i) => i.quantity <= i.reorderPoint);
+    const totalProducts = t4sInventories.length;
+    const totalInventory = t4sInventories.reduce((sum, i) => sum + i.afnFulfillableQty + i.afnReservedQty, 0);
     const todaySales = Number(todaySalesAgg._sum.amount || 0);
+
+    // Low stock: fulfillable quantity <= 10
+    const lowStockItems = t4sInventories
+      .filter((i) => i.afnFulfillableQty <= 10)
+      .map((i) => ({
+        id: i.id,
+        quantity: i.afnFulfillableQty + i.afnReservedQty,
+        availableQuantity: i.afnFulfillableQty,
+        reorderPoint: 10,
+        product: { sku: i.sku, title: i.asin },
+      }));
 
     const dailyMap = new Map<string, { amount: number; quantity: number }>();
     for (const s of dailySales) {
@@ -41,10 +52,7 @@ export async function GET() {
       data: {
         kpis: { totalProducts, totalInventory, todaySales, lowStockCount: lowStockItems.length },
         chartData,
-        lowStockItems: lowStockItems.map((i) => ({
-          ...i,
-          product: { ...i.product, price: i.product.price ? Number(i.product.price) : null },
-        })),
+        lowStockItems,
       },
     });
   } catch (err) {
