@@ -25,52 +25,55 @@ const columns: Column<InventoryItem>[] = [
   {
     key: "title",
     header: "商品名",
-    width: "28%",
     render: (row) => (
-      <span className="block truncate" title={row.product.title}>
-        {row.product.title}
-      </span>
+      <span className="text-gray-900">{row.product.title}</span>
     ),
   },
   {
     key: "sku",
     header: "SKU",
-    width: "14%",
-    className: "font-mono text-sm",
+    className: "font-mono text-xs whitespace-nowrap",
     render: (row) => row.product.sku,
   },
   {
     key: "asin",
     header: "ASIN",
-    width: "12%",
-    className: "font-mono text-sm",
+    className: "font-mono text-xs whitespace-nowrap",
+    render: (row) => (
+      <a
+        href={`https://www.amazon.co.jp/dp/${row.asin}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {row.asin}
+      </a>
+    ),
   },
   {
     key: "quantity",
     header: "総在庫",
     sortable: true,
-    width: "12%",
-    className: "text-right",
+    className: "text-right whitespace-nowrap",
     render: (row) => formatNumber(row.quantity),
   },
   {
     key: "availableQuantity",
     header: "出荷可能",
-    width: "12%",
-    className: "text-right",
+    className: "text-right whitespace-nowrap",
     render: (row) => formatNumber(row.availableQuantity),
   },
   {
     key: "reservedQuantity",
     header: "予約済",
-    width: "12%",
-    className: "text-right",
+    className: "text-right whitespace-nowrap",
     render: (row) => formatNumber(row.reservedQuantity),
   },
   {
     key: "status",
-    header: "ステータス",
-    width: "10%",
+    header: "状態",
+    className: "whitespace-nowrap",
     render: (row) => {
       const isLow = row.availableQuantity <= row.reorderPoint;
       return (

@@ -45,6 +45,7 @@ export function SalesBarChart({ data }: SalesBarChartProps) {
             name === "amount" ? "売上金額" : "販売数",
           ]}
           labelFormatter={(label: string) => formatShortDate(label)}
+          contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}
         />
         <Legend
           formatter={(value: string) => (value === "amount" ? "売上金額" : "販売数")}

@@ -20,6 +20,7 @@ interface DataTableProps<T> {
   renderExpanded?: (row: T) => React.ReactNode;
   emptyMessage?: string;
   keyExtractor: (row: T) => string;
+  borderless?: boolean;
 }
 
 export function DataTable<T>({
@@ -30,6 +31,7 @@ export function DataTable<T>({
   renderExpanded,
   emptyMessage = "データがありません",
   keyExtractor,
+  borderless,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -67,14 +69,17 @@ export function DataTable<T>({
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-      <table className="min-w-full divide-y divide-gray-200 table-fixed">
+    <div className={cn(
+      "overflow-x-auto bg-white",
+      !borderless && "rounded-lg border border-gray-200 shadow-sm",
+    )}>
+      <table className="w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
-                style={col.width ? { width: col.width } : undefined}
+                style={col.width ? { width: col.width, minWidth: 0 } : undefined}
                 className={cn(
                   "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500",
                   col.sortable && "cursor-pointer select-none hover:text-gray-700",
@@ -118,7 +123,7 @@ export function DataTable<T>({
                       <td
                         key={col.key}
                         className={cn(
-                          "px-4 py-3 text-sm text-gray-700",
+                          "px-4 py-3 text-sm text-gray-700 break-words",
                           col.className,
                         )}
                       >

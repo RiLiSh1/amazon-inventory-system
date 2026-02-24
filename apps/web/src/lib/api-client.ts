@@ -56,7 +56,7 @@ export async function fetchProducts(search?: string) {
 }
 
 export async function fetchInventories(stockStatus?: string) {
-  const params = new URLSearchParams({ perPage: "200" });
+  const params = new URLSearchParams({ perPage: "500" });
   if (stockStatus && stockStatus !== "all") params.set("stockStatus", stockStatus);
   const res = await apiFetch<ApiListResponse<{
     id: string;
@@ -90,6 +90,18 @@ export async function fetchDailySales(startDate: string, endDate: string) {
   const res = await apiFetch<ApiItemResponse<{ date: string; amount: number; quantity: number }[]>>(
     `/t4s/sales/daily?${params}`,
   );
+  return res.data;
+}
+
+export async function fetchSalesBySku(startDate: string, endDate: string) {
+  const params = new URLSearchParams({ startDate, endDate });
+  const res = await apiFetch<ApiItemResponse<{
+    sku: string;
+    asin: string;
+    title: string;
+    totalAmount: number;
+    totalQuantity: number;
+  }[]>>(`/t4s/sales/by-sku?${params}`);
   return res.data;
 }
 
