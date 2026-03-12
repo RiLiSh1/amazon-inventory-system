@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const stockStatus = searchParams.get("stockStatus") || "";
     const pageNum = Math.max(1, Number(searchParams.get("page") || "1"));
-    const perPageNum = Math.min(200, Math.max(1, Number(searchParams.get("perPage") || "20")));
+    const perPageNum = Math.min(500, Math.max(1, Number(searchParams.get("perPage") || "500")));
 
     const [t4sItems, productRecords] = await Promise.all([
       prisma.t4sInventoryData.findMany(),

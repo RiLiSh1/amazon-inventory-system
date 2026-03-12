@@ -37,6 +37,30 @@ async function t4sFetch<T>(endpoint: string, params: Record<string, string> = {}
   throw lastError;
 }
 
+const T4S_PAGE_SIZE = 100;
+
+/** Fetch all pages from a T4S API endpoint using startIndex pagination (max 100 per page). */
+async function t4sFetchAll<T>(endpoint: string, params: Record<string, string> = {}): Promise<T[]> {
+  const all: T[] = [];
+  let startIndex = 0;
+  let hasMore = true;
+  while (hasMore) {
+    const page = await t4sFetch<T[]>(endpoint, {
+      ...params,
+      count: String(T4S_PAGE_SIZE),
+      startIndex: String(startIndex),
+    });
+    if (!Array.isArray(page) || page.length === 0) {
+      hasMore = false;
+    } else {
+      all.push(...page);
+      hasMore = page.length >= T4S_PAGE_SIZE;
+      startIndex += T4S_PAGE_SIZE;
+    }
+  }
+  return all;
+}
+
 // T4S API returns arrays directly, with camelCase field names
 
 interface T4sApiSalesItem {
@@ -88,7 +112,7 @@ export async function syncSales(startDate: string, endDate: string): Promise<num
   try {
     const startTime = Math.floor(new Date(startDate).getTime() / 1000);
     const endTime = Math.floor(new Date(endDate).getTime() / 1000);
-    const items = await t4sFetch<T4sApiSalesItem[]>("/api/sales", {
+    const items = await t4sFetchAll<T4sApiSalesItem>("/api/sales", {
       sellerId: config.t4s.sellerId,
       marketplaceId: config.t4s.marketplaceId,
       startTime: String(startTime),
@@ -143,7 +167,7 @@ export async function syncInventories(): Promise<number> {
   });
 
   try {
-    const items = await t4sFetch<T4sApiInventoryItem[]>("/api/inventories", {
+    const items = await t4sFetchAll<T4sApiInventoryItem>("/api/inventories", {
       sellerId: config.t4s.sellerId,
       marketplaceId: config.t4s.marketplaceId,
     });
@@ -205,7 +229,7 @@ export async function syncShipments(): Promise<number> {
   });
 
   try {
-    const shipments = await t4sFetch<T4sApiShipment[]>("/api/inbound-shipments", {
+    const shipments = await t4sFetchAll<T4sApiShipment>("/api/inbound-shipments", {
       sellerId: config.t4s.sellerId,
     });
 

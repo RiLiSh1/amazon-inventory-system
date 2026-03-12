@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const pageNum = Math.max(1, Number(searchParams.get("page") || "1"));
-    const perPageNum = Math.min(200, Math.max(1, Number(searchParams.get("perPage") || "50")));
+    const perPageNum = Math.min(500, Math.max(1, Number(searchParams.get("perPage") || "500")));
 
     const where: Record<string, unknown> = {};
     if (startDate || endDate) {

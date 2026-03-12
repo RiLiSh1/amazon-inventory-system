@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const search = searchParams.get("search") || "";
     const pageNum = Math.max(1, Number(searchParams.get("page") || "1"));
-    const perPageNum = Math.min(200, Math.max(1, Number(searchParams.get("perPage") || "20")));
+    const perPageNum = Math.min(500, Math.max(1, Number(searchParams.get("perPage") || "500")));
 
     // Get T4S inventory items and product titles
     const [t4sItems, productRecords] = await Promise.all([
