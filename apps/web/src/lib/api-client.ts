@@ -1,9 +1,5 @@
-const EXTERNAL_API = process.env.NEXT_PUBLIC_API_URL;
-const API_PREFIX = EXTERNAL_API ? "" : "/api";
-const API_BASE = EXTERNAL_API || "";
-
 async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${API_PREFIX}${path}`, {
+  const res = await fetch(`/api${path}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
