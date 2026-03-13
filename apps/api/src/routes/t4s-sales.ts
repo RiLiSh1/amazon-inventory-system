@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@amazon-inventory/database";
-import { validate, salesQuery, dateRangeQuery } from "../lib/validators.js";
 
 export async function t4sSalesRoutes(app: FastifyInstance) {
   // GET /t4s/sales
   app.get("/t4s/sales", async (request) => {
-    const { startDate, endDate, page, perPage } = validate(salesQuery, request.query);
-    const perPageNum = Math.min(200, perPage);
+    const { startDate, endDate, page = "1", perPage = "50" } = request.query as Record<string, string>;
+    const pageNum = Math.max(1, Number(page));
+    const perPageNum = Math.min(200, Math.max(1, Number(perPage)));
 
     const where: Record<string, unknown> = {};
     if (startDate || endDate) {
@@ -23,7 +23,7 @@ export async function t4sSalesRoutes(app: FastifyInstance) {
     const [data, total] = await Promise.all([
       prisma.t4sSalesData.findMany({
         where,
-        skip: (page - 1) * perPageNum,
+        skip: (pageNum - 1) * perPageNum,
         take: perPageNum,
         orderBy: { date: "desc" },
       }),
@@ -33,13 +33,13 @@ export async function t4sSalesRoutes(app: FastifyInstance) {
     return {
       success: true,
       data: data.map((d) => ({ ...d, amount: Number(d.amount) })),
-      meta: { page, perPage: perPageNum, total },
+      meta: { page: pageNum, perPage: perPageNum, total },
     };
   });
 
   // GET /t4s/sales/daily
   app.get("/t4s/sales/daily", async (request) => {
-    const { startDate, endDate } = validate(dateRangeQuery, request.query);
+    const { startDate, endDate } = request.query as Record<string, string>;
 
     const where: Record<string, unknown> = {};
     if (startDate || endDate) {

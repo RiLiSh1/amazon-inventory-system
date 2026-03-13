@@ -1,39 +1,53 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Package, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DataTable, type Column } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { SHIPMENT_STATUS_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/utils";
 import { fetchShipments, fetchShipmentItems } from "@/lib/api-client";
 import type { T4sInboundShipment, T4sInboundShipmentItem } from "@amazon-inventory/shared";
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  WORKING: "default",
-  SHIPPED: "secondary",
-  RECEIVING: "outline",
-  CLOSED: "destructive",
-};
+const columns: Column<T4sInboundShipment>[] = [
+  { key: "shipmentId", header: "Shipment ID", className: "font-mono" },
+  {
+    key: "shipmentName",
+    header: "納品プラン名",
+    render: (row) => row.shipmentName || "---",
+  },
+  {
+    key: "shipmentStatus",
+    header: "ステータス",
+    render: (row) => (
+      <StatusBadge
+        status={row.shipmentStatus || ""}
+        label={
+          row.shipmentStatus
+            ? SHIPMENT_STATUS_LABELS[row.shipmentStatus] || row.shipmentStatus
+            : "---"
+        }
+      />
+    ),
+  },
+  {
+    key: "centerId",
+    header: "FC",
+    render: (row) => row.centerId || "---",
+  },
+  {
+    key: "estimatedTime",
+    header: "到着予定日",
+    render: (row) => (row.estimatedTime ? formatDate(row.estimatedTime) : "---"),
+  },
+  {
+    key: "updateTime",
+    header: "最終更新",
+    render: (row) => (row.updateTime ? formatDateTime(row.updateTime) : "---"),
+  },
+];
 
-function ShipmentStatusBadge({ status }: { status: string | null }) {
-  if (!status) return <span className="text-sm text-muted-foreground">---</span>;
-  const variant = STATUS_VARIANT[status] ?? "outline";
-  const label = SHIPMENT_STATUS_LABELS[status] || status;
-  return <Badge variant={variant}>{label}</Badge>;
-}
-
-function ShipmentItemsPanel({ shipmentId }: { shipmentId: string }) {
+function ShipmentItemsTable({ shipmentId }: { shipmentId: string }) {
   const [items, setItems] = useState<T4sInboundShipmentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,72 +67,34 @@ function ShipmentItemsPanel({ shipmentId }: { shipmentId: string }) {
   }, [shipmentId]);
 
   if (loading) {
-    return (
-      <div className="space-y-2 p-4">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-      </div>
-    );
+    return <div className="flex justify-center p-4"><div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" /></div>;
   }
-
   if (items.length === 0) {
-    return (
-      <p className="px-4 py-3 text-sm text-muted-foreground">明細データなし</p>
-    );
+    return <p className="text-sm text-gray-500">明細データなし</p>;
   }
-
   return (
-    <div className="bg-muted/30 px-4 py-3">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-xs">SKU</TableHead>
-            <TableHead className="text-xs">Network SKU</TableHead>
-            <TableHead className="text-right text-xs">出荷数量</TableHead>
-            <TableHead className="text-right text-xs">受領数量</TableHead>
-            <TableHead className="text-right text-xs">ケース数</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell className="font-mono text-sm">{item.sku}</TableCell>
-              <TableCell className="font-mono text-sm text-muted-foreground">
-                {item.networkSku || "---"}
-              </TableCell>
-              <TableCell className="text-right text-sm">
-                {formatNumber(item.qtyShipped)}
-              </TableCell>
-              <TableCell className="text-right text-sm">
-                {formatNumber(item.qtyReceived)}
-              </TableCell>
-              <TableCell className="text-right text-sm">
-                {formatNumber(item.qtyInCase)}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-1">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3">
-          <Skeleton className="h-4 w-6" />
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-5 w-16 rounded-full" />
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-28" />
-        </div>
-      ))}
-    </div>
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead>
+        <tr>
+          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">SKU</th>
+          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Network SKU</th>
+          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">出荷数量</th>
+          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">受領数量</th>
+          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">ケース数</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100">
+        {items.map((item) => (
+          <tr key={item.id}>
+            <td className="px-4 py-2 text-sm font-mono text-gray-700">{item.sku}</td>
+            <td className="px-4 py-2 text-sm font-mono text-gray-500">{item.networkSku || "---"}</td>
+            <td className="px-4 py-2 text-right text-sm text-gray-700">{formatNumber(item.qtyShipped)}</td>
+            <td className="px-4 py-2 text-right text-sm text-gray-700">{formatNumber(item.qtyReceived)}</td>
+            <td className="px-4 py-2 text-right text-sm text-gray-700">{formatNumber(item.qtyInCase)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -126,7 +102,6 @@ export default function ShipmentsPage() {
   const [shipments, setShipments] = useState<T4sInboundShipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchShipments()
@@ -146,106 +121,28 @@ export default function ShipmentsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const toggleExpand = (id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  };
-
   return (
     <>
       <Header
         title="納品プラン"
-        description={`全${shipments.length}件の納品プラン`}
+        description={`全${shipments.length}件の納品プラン（クリックで明細展開）`}
       />
-      <div className="p-4 sm:p-8">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-muted-foreground" />
-              <CardTitle className="text-lg">納品プラン一覧</CardTitle>
-            </div>
-            <CardDescription>
-              行をクリックで明細を展開できます
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <LoadingSkeleton />
-            ) : error ? (
-              <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>データの取得に失敗しました: {error}</span>
-              </div>
-            ) : shipments.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                納品プランがありません
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10" />
-                    <TableHead>Shipment ID</TableHead>
-                    <TableHead>納品プラン名</TableHead>
-                    <TableHead>ステータス</TableHead>
-                    <TableHead>FC</TableHead>
-                    <TableHead>到着予定日</TableHead>
-                    <TableHead>最終更新</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {shipments.map((shipment) => {
-                    const isExpanded = expandedId === shipment.id;
-                    return (
-                      <Fragment key={shipment.id}>
-                        <TableRow
-                          className="cursor-pointer"
-                          onClick={() => toggleExpand(shipment.id)}
-                        >
-                          <TableCell className="w-10">
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </TableCell>
-                          <TableCell className="font-mono">
-                            {shipment.shipmentId}
-                          </TableCell>
-                          <TableCell>
-                            {shipment.shipmentName || "---"}
-                          </TableCell>
-                          <TableCell>
-                            <ShipmentStatusBadge status={shipment.shipmentStatus} />
-                          </TableCell>
-                          <TableCell>
-                            {shipment.centerId || "---"}
-                          </TableCell>
-                          <TableCell>
-                            {shipment.estimatedTime
-                              ? formatDate(shipment.estimatedTime)
-                              : "---"}
-                          </TableCell>
-                          <TableCell>
-                            {shipment.updateTime
-                              ? formatDateTime(shipment.updateTime)
-                              : "---"}
-                          </TableCell>
-                        </TableRow>
-                        {isExpanded && (
-                          <TableRow className="hover:bg-transparent">
-                            <TableCell colSpan={7} className="p-0">
-                              <ShipmentItemsPanel shipmentId={shipment.shipmentId} />
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+      <div className="p-8">
+        {loading ? (
+          <div className="flex items-center justify-center p-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          </div>
+        ) : error ? (
+          <p className="text-red-600">データの取得に失敗しました: {error}</p>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={shipments}
+            keyExtractor={(row) => row.id}
+            expandable
+            renderExpanded={(row) => <ShipmentItemsTable shipmentId={row.shipmentId} />}
+          />
+        )}
       </div>
     </>
   );

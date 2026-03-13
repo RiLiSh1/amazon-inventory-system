@@ -1,30 +1,33 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface KPICardProps {
   title: string;
   value: string | number;
   subtitle?: string;
+  trend?: "up" | "down" | "neutral";
   icon?: React.ReactNode;
-  trend?: "up" | "down";
 }
 
-export function KPICard({ title, value, icon, subtitle, trend }: KPICardProps) {
+export function KPICard({ title, value, subtitle, trend, icon }: KPICardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        {icon && <div className="text-muted-foreground">{icon}</div>}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {subtitle && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {trend === "up" && "↑ "}
-            {trend === "down" && "↓ "}
-            {subtitle}
-          </p>
-        )}
-      </CardContent>
-    </Card>
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-gray-500">{title}</p>
+        {icon && <div className="text-gray-400">{icon}</div>}
+      </div>
+      <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
+      {subtitle && (
+        <p
+          className={cn(
+            "mt-1 text-sm",
+            trend === "up" && "text-green-600",
+            trend === "down" && "text-red-600",
+            (!trend || trend === "neutral") && "text-gray-500",
+          )}
+        >
+          {subtitle}
+        </p>
+      )}
+    </div>
   );
 }

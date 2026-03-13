@@ -1,3 +1,6 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
+  "buildCommand": "cd packages/database && npx prisma generate && cd ../.. && npm run build --workspace=@amazon-inventory/shared && npm run build --workspace=@amazon-inventory/database && npm run build --workspace=@amazon-inventory/web",
+  "outputDirectory": "apps/web/.next",
+  "installCommand": "npm install --include=dev",
+  "framework": "nextjs"
 }
