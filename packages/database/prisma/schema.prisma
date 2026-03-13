@@ -58,6 +58,9 @@ model T4sSalesData {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@unique([date, sellerId, marketplaceId, asin, sku])
+  @@index([date])
+  @@index([sku])
+  @@index([asin])
   @@map("t4s_sales_data")
 }
 
@@ -78,6 +81,8 @@ model T4sInventoryData {
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@unique([sellerId, marketplaceId, sku])
+  @@index([asin])
+  @@index([sku])
   @@map("t4s_inventory_data")
 }
 
@@ -126,5 +131,7 @@ model T4sImportLog {
   completedAt  DateTime? @map("completed_at")
   createdAt    DateTime  @default(now()) @map("created_at")
 
+  @@index([startedAt])
+  @@index([status])
   @@map("t4s_import_logs")
 }

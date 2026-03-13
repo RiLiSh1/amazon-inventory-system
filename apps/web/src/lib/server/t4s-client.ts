@@ -39,25 +39,29 @@ async function t4sFetch<T>(endpoint: string, params: Record<string, string> = {}
 
 const T4S_PAGE_SIZE = 100;
 
+const T4S_MAX_PAGES = 50;
+
 /** Fetch all pages from a T4S API endpoint using startIndex pagination (max 100 per page). */
 async function t4sFetchAll<T>(endpoint: string, params: Record<string, string> = {}): Promise<T[]> {
   const all: T[] = [];
   let startIndex = 0;
-  let hasMore = true;
-  while (hasMore) {
-    const page = await t4sFetch<T[]>(endpoint, {
+
+  for (let page = 0; page < T4S_MAX_PAGES; page++) {
+    const items = await t4sFetch<T[]>(endpoint, {
       ...params,
       count: String(T4S_PAGE_SIZE),
       startIndex: String(startIndex),
     });
-    if (!Array.isArray(page) || page.length === 0) {
-      hasMore = false;
-    } else {
-      all.push(...page);
-      hasMore = page.length >= T4S_PAGE_SIZE;
-      startIndex += T4S_PAGE_SIZE;
-    }
+
+    if (!Array.isArray(items) || items.length === 0) break;
+
+    all.push(...items);
+
+    if (items.length < T4S_PAGE_SIZE) break;
+
+    startIndex += T4S_PAGE_SIZE;
   }
+
   return all;
 }
 

@@ -8,6 +8,13 @@ export async function POST(request: NextRequest) {
     const startDate = body.startDate || new Date(now.getTime() - 7 * 86400000).toISOString().split("T")[0];
     const endDate = body.endDate || now.toISOString().split("T")[0];
 
+    if (new Date(startDate) > new Date(endDate)) {
+      return NextResponse.json(
+        { success: false, error: "startDate must be before endDate" },
+        { status: 400 },
+      );
+    }
+
     const count = await syncSales(startDate, endDate);
     return NextResponse.json({ success: true, data: { recordsCount: count } });
   } catch (err) {
