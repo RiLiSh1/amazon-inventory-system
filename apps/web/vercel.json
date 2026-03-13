@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm install --include=dev --prefix ../..",
+  "buildCommand": "cd ../../packages/database && npx prisma generate && cd ../.. && npx turbo build --filter=@amazon-inventory/web...",
+  "framework": "nextjs"
+}

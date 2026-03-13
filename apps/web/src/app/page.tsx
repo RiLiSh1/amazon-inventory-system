@@ -1,12 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Package, Layers, TrendingUp, AlertTriangle, Download } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { KPICard } from "@/components/ui/kpi-card";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { SalesLineChart } from "@/components/charts/sales-line-chart";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { fetchDashboardSummary } from "@/lib/api-client";
+import { exportToCsv } from "@/lib/csv-export";
 
 interface DashboardData {
   kpis: { totalProducts: number; totalInventory: number; todaySales: number; lowStockCount: number };
@@ -18,6 +31,52 @@ interface DashboardData {
     reorderPoint: number;
     product: { sku: string; title: string };
   }>;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="p-8 space-y-8">
+      {/* KPI Skeleton */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-5 w-5 rounded" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-20 mb-1" />
+              <Skeleton className="h-3 w-28" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Chart Skeleton */}
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-48" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[320px] w-full" />
+        </CardContent>
+      </Card>
+
+      {/* Table Skeleton */}
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-40" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -32,13 +91,26 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleExportLowStock = () => {
+    if (!data?.lowStockItems.length) return;
+    exportToCsv(
+      data.lowStockItems,
+      [
+        { header: "SKU", accessor: (row) => row.product.sku },
+        { header: "商品名", accessor: (row) => row.product.title },
+        { header: "在庫数", accessor: "quantity" },
+        { header: "利用可能数", accessor: "availableQuantity" },
+        { header: "発注点", accessor: "reorderPoint" },
+      ],
+      "low_stock_items",
+    );
+  };
+
   if (loading) {
     return (
       <>
         <Header title="ダッシュボード" description="在庫状況と売上の概要" />
-        <div className="flex items-center justify-center p-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-        </div>
+        <DashboardSkeleton />
       </>
     );
   }
@@ -48,7 +120,11 @@ export default function DashboardPage() {
       <>
         <Header title="ダッシュボード" description="在庫状況と売上の概要" />
         <div className="p-8">
-          <p className="text-red-600">データの取得に失敗しました: {error}</p>
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-sm text-destructive">データの取得に失敗しました: {error}</p>
+            </CardContent>
+          </Card>
         </div>
       </>
     );
@@ -64,86 +140,86 @@ export default function DashboardPage() {
             title="有効商品数"
             value={data.kpis.totalProducts}
             subtitle="アクティブな商品"
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-              </svg>
-            }
+            icon={<Package className="h-5 w-5" />}
           />
           <KPICard
             title="総在庫数"
             value={formatNumber(data.kpis.totalInventory)}
             subtitle="全倉庫合計"
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0L12 17.25 6.43 14.25m11.142 0-5.572 3-5.571-3m0 0L2.25 16.5 12 21.75l9.75-5.25-4.179-2.25" />
-              </svg>
-            }
+            icon={<Layers className="h-5 w-5" />}
           />
           <KPICard
             title="本日の売上"
             value={formatCurrency(data.kpis.todaySales)}
             subtitle="前日比で推移中"
             trend="up"
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-              </svg>
-            }
+            icon={<TrendingUp className="h-5 w-5" />}
           />
           <KPICard
             title="在庫不足"
             value={`${data.kpis.lowStockCount}件`}
             subtitle="発注点以下の商品"
             trend="down"
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-              </svg>
-            }
+            icon={<AlertTriangle className="h-5 w-5" />}
           />
         </div>
 
         {/* Sales Chart */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">売上推移（過去30日間）</h2>
-          <SalesLineChart data={data.chartData} />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">売上推移（過去30日間）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SalesLineChart data={data.chartData} />
+          </CardContent>
+        </Card>
 
         {/* Low Stock Table */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">在庫不足アイテム</h2>
-          {data.lowStockItems.length === 0 ? (
-            <p className="text-sm text-gray-500">在庫不足の商品はありません。</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">SKU</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">商品名</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">在庫数</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">利用可能</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">発注点</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ステータス</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">在庫不足アイテム</CardTitle>
+            {data.lowStockItems.length > 0 && (
+              <Button variant="outline" size="sm" onClick={handleExportLowStock}>
+                <Download className="mr-2 h-4 w-4" />
+                CSV出力
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {data.lowStockItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">在庫不足の商品はありません。</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>商品名</TableHead>
+                    <TableHead className="text-right">在庫数</TableHead>
+                    <TableHead className="text-right">利用可能</TableHead>
+                    <TableHead className="text-right">発注点</TableHead>
+                    <TableHead>ステータス</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {data.lowStockItems.map((item) => (
-                    <tr key={item.id} className="bg-red-50">
-                      <td className="px-4 py-3 text-sm font-mono text-gray-700">{item.product.sku}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{item.product.title}</td>
-                      <td className="px-4 py-3 text-right text-sm font-semibold text-red-600">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-700">{item.availableQuantity}</td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-700">{item.reorderPoint}</td>
-                      <td className="px-4 py-3"><StatusBadge status="low" label="在庫不足" /></td>
-                    </tr>
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono text-sm">{item.product.sku}</TableCell>
+                      <TableCell>{item.product.title}</TableCell>
+                      <TableCell className="text-right font-semibold text-destructive">
+                        {item.quantity}
+                      </TableCell>
+                      <TableCell className="text-right">{item.availableQuantity}</TableCell>
+                      <TableCell className="text-right">{item.reorderPoint}</TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">在庫不足</Badge>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </>
   );

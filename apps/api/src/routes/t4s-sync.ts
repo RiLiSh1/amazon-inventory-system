@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { syncSales, syncInventories, syncShipments } from "../lib/t4s-client.js";
+import { validate, syncSalesBody } from "../lib/validators.js";
 
 export async function t4sSyncRoutes(app: FastifyInstance) {
   // POST /t4s/sync/sales
   app.post("/t4s/sync/sales", async (request, reply) => {
-    const { startDate, endDate } = request.body as { startDate?: string; endDate?: string };
+    const { startDate, endDate } = validate(syncSalesBody, request.body ?? {});
     const now = new Date();
     const start = startDate || new Date(now.getTime() - 30 * 86400000).toISOString().split("T")[0];
     const end = endDate || now.toISOString().split("T")[0];

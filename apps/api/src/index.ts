@@ -13,6 +13,15 @@ const app = Fastify({
   logger: true,
 });
 
+// Global error handler for validation errors
+app.setErrorHandler((error, _request, reply) => {
+  if ((error as Error & { statusCode?: number }).statusCode === 400) {
+    return reply.status(400).send({ success: false, error: error.message });
+  }
+  app.log.error(error);
+  return reply.status(500).send({ success: false, error: "Internal server error" });
+});
+
 const corsOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
   .split(",")
   .map((o) => o.trim());

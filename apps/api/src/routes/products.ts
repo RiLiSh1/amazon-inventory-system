@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@amazon-inventory/database";
+import { validate, productQuery, createProductBody, updateProductBody } from "../lib/validators.js";
 
 export async function productRoutes(app: FastifyInstance) {
   // GET /products
   app.get("/products", async (request) => {
-    const { search, status, page = "1", perPage = "20" } = request.query as Record<string, string>;
-    const pageNum = Math.max(1, Number(page));
-    const perPageNum = Math.min(100, Math.max(1, Number(perPage)));
+    const { search, status, page, perPage } = validate(productQuery, request.query);
+    const perPageNum = Math.min(100, perPage);
 
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
@@ -21,7 +21,7 @@ export async function productRoutes(app: FastifyInstance) {
     const [data, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        skip: (pageNum - 1) * perPageNum,
+        skip: (page - 1) * perPageNum,
         take: perPageNum,
         orderBy: { updatedAt: "desc" },
       }),
@@ -31,7 +31,7 @@ export async function productRoutes(app: FastifyInstance) {
     return {
       success: true,
       data: data.map((p) => ({ ...p, price: p.price ? Number(p.price) : null })),
-      meta: { page: pageNum, perPage: perPageNum, total },
+      meta: { page, perPage: perPageNum, total },
     };
   });
 
@@ -47,15 +47,7 @@ export async function productRoutes(app: FastifyInstance) {
 
   // POST /products
   app.post("/products", async (request) => {
-    const body = request.body as {
-      asin: string;
-      sku: string;
-      title: string;
-      brand?: string;
-      category?: string;
-      price?: number;
-      imageUrl?: string;
-    };
+    const body = validate(createProductBody, request.body);
     const product = await prisma.product.create({ data: body });
     return { success: true, data: { ...product, price: product.price ? Number(product.price) : null } };
   });
@@ -63,14 +55,7 @@ export async function productRoutes(app: FastifyInstance) {
   // PUT /products/:id
   app.put("/products/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = request.body as {
-      title?: string;
-      brand?: string;
-      category?: string;
-      price?: number;
-      imageUrl?: string;
-      status?: string;
-    };
+    const body = validate(updateProductBody, request.body);
     try {
       const product = await prisma.product.update({ where: { id }, data: body });
       return { success: true, data: { ...product, price: product.price ? Number(product.price) : null } };

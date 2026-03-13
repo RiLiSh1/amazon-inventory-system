@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@amazon-inventory/database";
+import { validate, inventoryQuery, updateInventoryBody } from "../lib/validators.js";
 
 export async function inventoryRoutes(app: FastifyInstance) {
   // GET /inventories
   app.get("/inventories", async (request) => {
-    const { stockStatus, page = "1", perPage = "20" } = request.query as Record<string, string>;
-    const pageNum = Math.max(1, Number(page));
-    const perPageNum = Math.min(100, Math.max(1, Number(perPage)));
+    const { stockStatus, page, perPage } = validate(inventoryQuery, request.query);
+    const perPageNum = Math.min(100, perPage);
 
     const allInventories = await prisma.inventory.findMany({
       include: { product: true },
@@ -21,7 +21,7 @@ export async function inventoryRoutes(app: FastifyInstance) {
     }
 
     const total = filtered.length;
-    const paged = filtered.slice((pageNum - 1) * perPageNum, pageNum * perPageNum);
+    const paged = filtered.slice((page - 1) * perPageNum, page * perPageNum);
 
     return {
       success: true,
@@ -29,21 +29,14 @@ export async function inventoryRoutes(app: FastifyInstance) {
         ...i,
         product: { ...i.product, price: i.product.price ? Number(i.product.price) : null },
       })),
-      meta: { page: pageNum, perPage: perPageNum, total },
+      meta: { page, perPage: perPageNum, total },
     };
   });
 
   // PUT /inventories/:id
   app.put("/inventories/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = request.body as {
-      quantity?: number;
-      availableQuantity?: number;
-      reservedQuantity?: number;
-      reorderPoint?: number;
-      reorderQuantity?: number;
-      warehouseLocation?: string;
-    };
+    const body = validate(updateInventoryBody, request.body);
     try {
       const inventory = await prisma.inventory.update({
         where: { id },
